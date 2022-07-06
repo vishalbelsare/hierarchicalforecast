@@ -1,0 +1,13 @@
+name: hierarchical_benchmarks
+channels:
+  - conda-forge
+dependencies:
+  - python=3.7
+  - pip==20.3.3
+  - fire
+  - jupyterlab
+  - pip:
+    - pyarrow
+    - git+https://TOKEN@github.com/nixtla/datasetsforecast.git@main
+    - git+https://TOKEN@github.com/nixtla/hierarchicalforecast.git@main
+    - git+https://github.com/nixtla/statsforecast.git@feat/hierarchical
