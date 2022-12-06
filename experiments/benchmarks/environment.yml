@@ -6,8 +6,8 @@ dependencies:
   - pip==20.3.3
   - fire
   - jupyterlab
+  - hierarchicalforecast
+  - statsforecast
   - pip:
     - pyarrow
-    - git+https://TOKEN@github.com/nixtla/datasetsforecast.git@main
-    - git+https://TOKEN@github.com/nixtla/hierarchicalforecast.git@main
-    - git+https://github.com/nixtla/statsforecast.git@feat/hierarchical
+    - datasetsforecast
