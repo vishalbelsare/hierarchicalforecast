@@ -45,7 +45,12 @@ def _reverse_engineer_sigmah(Y_hat_df, y_hat, model_name):
     In the future, we might deprecate this function in favor of a 
     direct usage of an estimated $\hat{sigma}_{h}$
     """
-    drop_cols = ['ds', 'y'] if 'y' in Y_hat_df.columns else ['ds']
+
+    drop_cols = ['ds']
+    if 'y' in Y_hat_df.columns:
+        drop_cols.append('y')
+    if model_name+'-median' in Y_hat_df.columns:
+        drop_cols.append(model_name+'-median')
     model_names = Y_hat_df.drop(columns=drop_cols, axis=1).columns.to_list()
     pi_model_names = [name for name in model_names if ('-lo' in name or '-hi' in name)]
     pi_model_name = [pi_name for pi_name in pi_model_names if model_name in pi_name]
@@ -134,9 +139,18 @@ class HierarchicalReconciliation:
         # Declare output names
         drop_cols = ['ds', 'y'] if 'y' in Y_hat_df.columns else ['ds']
         model_names = Y_hat_df.drop(columns=drop_cols, axis=1).columns.to_list()
-        pi_model_names = [name for name in model_names if ('-lo' in name or '-hi' in name)]
-        model_names = [name for name in model_names if name not in pi_model_names]
 
+        # Ensure numeric columns
+        if not len(Y_hat_df[model_names].select_dtypes(include='number').columns) == len(Y_hat_df[model_names].columns):
+            raise Exception('`Y_hat_df`s columns contain non numeric types')
+            
+        #Ensure no null values
+        if Y_hat_df[model_names].isnull().values.any():
+            raise Exception('`Y_hat_df` contains null values')
+        
+        pi_model_names = [name for name in model_names if ('-lo' in name or '-hi' in name or '-median' in name)]
+        model_names = [name for name in model_names if name not in pi_model_names]
+        
         # TODO: Complete y_hat_insample protection
         if intervals_method in ['bootstrap', 'permbu']:
            if not (set(model_names) <= set(Y_df.columns)):
