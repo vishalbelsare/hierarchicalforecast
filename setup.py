@@ -22,13 +22,15 @@ licenses = {
 }
 statuses = [ '1 - Planning', '2 - Pre-Alpha', '3 - Alpha',
     '4 - Beta', '5 - Production/Stable', '6 - Mature', '7 - Inactive' ]
-py_versions = '3.6 3.7 3.8 3.9 3.10'.split()
+py_versions = '3.9 3.10 3.11 3.12'.split()
 
-requirements = cfg.get('requirements','').split()
+requirements = cfg['requirements'].split(',')
 if cfg.get('pip_requirements'): requirements += cfg.get('pip_requirements','').split()
 min_python = cfg['min_python']
 lic = licenses.get(cfg['license'].lower(), (cfg['license'], None))
 dev_requirements = (cfg.get('dev_requirements') or '').split()
+polars_requirements = (cfg.get('polars_requirements') or '').split()
+dev_requirements.extend(polars_requirements)
 
 setuptools.setup(
     name = 'hierarchicalforecast',
@@ -42,7 +44,9 @@ setuptools.setup(
     packages = setuptools.find_packages(),
     include_package_data = True,
     install_requires = requirements,
-    extras_require={ 'dev': dev_requirements },
+    extras_require={'dev': dev_requirements,
+                    'polars': polars_requirements, 
+                      },
     dependency_links = cfg.get('dep_links','').split(),
     python_requires  = '>=' + cfg['min_python'],
     long_description = open('README.md', encoding='utf8').read(),
