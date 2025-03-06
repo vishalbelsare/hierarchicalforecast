@@ -1,13 +1,17 @@
 import os
-import time
+
+os.environ['NIXTLA_ID_AS_COL'] = '1'
 
 import fire
-import numpy as np
 import pandas as pd
 
 from hierarchicalforecast.core import HierarchicalReconciliation
 from hierarchicalforecast.methods import (
-    BottomUp, MinTrace, 
+    BottomUp, BottomUpSparse, TopDown, TopDownSparse, MiddleOut, MiddleOutSparse, 
+    MinTrace, 
+    MinTraceSparse, 
+    OptimalCombination,
+    ERM,
 )
 
 from src.data import get_data
@@ -17,13 +21,29 @@ def main():
     Y_train_df, Y_test_df, Y_hat_df, Y_fitted_df, S_df, tags = get_data()
 
     reconcilers = [BottomUp(),
+                   BottomUpSparse(),
+                   TopDown(method="average_proportions"),
+                   TopDownSparse(method="average_proportions"),
+                   TopDown(method="proportion_averages"),
+                   TopDownSparse(method="proportion_averages"),
+                   MiddleOut(middle_level="Country/State", top_down_method="average_proportions"),
+                   MiddleOutSparse(middle_level="Country/State", top_down_method="average_proportions"),
+                   MinTrace(method='ols'),
+                   MinTrace(method='wls_struct'),
+                   MinTrace(method='wls_var'),
+                   MinTrace(method='mint_cov'),
                    MinTrace(method='mint_shrink'),
-                   MinTrace(method='ols')]
+                   MinTraceSparse(method='ols'),
+                   MinTraceSparse(method='wls_struct'),
+                   MinTraceSparse(method='wls_var'),
+                   OptimalCombination(method='ols'),
+                   OptimalCombination(method='wls_struct'),
+                   ERM(method='closed'),
+    ]
     hrec = HierarchicalReconciliation(reconcilers=reconcilers)
     Y_rec_df = hrec.reconcile(Y_hat_df=Y_hat_df,
                                Y_df=Y_fitted_df, S=S_df, tags=tags)
 
-    Y_rec_df = Y_rec_df.reset_index()
     execution_times = pd.Series(hrec.execution_times).reset_index()
 
     if not os.path.exists('./data'):

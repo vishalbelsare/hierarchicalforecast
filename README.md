@@ -15,7 +15,7 @@
 </div>
 
 ## 📚 Intro
-A vast amount of time series datasets are organized into structures with different levels or hierarchies of aggregation. Examples include categories, brands, or geographical groupings. Coherent forecasts across levels are necessary for consistent decision-making and planning. Hierachical Forecast offers differnt reconciliation methods that render coherent forecasts across hierachies. 
+A vast amount of time series datasets are organized into structures with different levels or hierarchies of aggregation. Examples include categories, brands, or geographical groupings. Coherent forecasts across levels are necessary for consistent decision-making and planning. Hierachical Forecast offers different reconciliation methods that render coherent forecasts across hierachies. 
 Until recent, this methods were mainly avaiable in the R ecosystem. This Python-based framework aims to bridge the gap between statistical modeling and Machine Learning in the time series field.
 
 ## 🎊 Features 
@@ -65,7 +65,11 @@ You can open a complete example in Colab [![Open In Colab](https://colab.researc
 Minimal Example:
 ```python
 # !pip install -U numba statsforecast datasetsforecast
+import numpy as np
 import pandas as pd
+
+#obtain hierarchical dataset
+from datasetsforecast.hierarchical import HierarchicalData
 
 # compute base forecast no coherent
 from statsforecast.core import StatsForecast
@@ -73,22 +77,23 @@ from statsforecast.models import AutoARIMA, Naive
 
 #obtain hierarchical reconciliation methods and evaluation
 from hierarchicalforecast.core import HierarchicalReconciliation
+from hierarchicalforecast.evaluation import evaluate
 from hierarchicalforecast.methods import BottomUp, TopDown, MiddleOut
-
-#obtain hierarchical datasets
-from datasetsforecast.hierarchical import HierarchicalData
+from utilsforecast.losses import mse
 
 # Load TourismSmall dataset
 Y_df, S, tags = HierarchicalData.load('./data', 'TourismSmall')
 Y_df['ds'] = pd.to_datetime(Y_df['ds'])
+S = S.reset_index(names="unique_id")
 
+#split train/test sets
+Y_test_df  = Y_df.groupby('unique_id').tail(4)
+Y_train_df = Y_df.drop(Y_test_df.index)
 
-# Compute base level predictions 
-sf = StatsForecast(df=Y_df, 
-                   models=[AutoARIMA(season_length=12), Naive()], 
-                   freq='M', n_jobs=-1)
-
-forecasts_df = sf.forecast(h=12)
+# Compute base auto-ARIMA predictions
+fcst = StatsForecast(models=[AutoARIMA(season_length=4), Naive()],
+                     freq='QE', n_jobs=-1)
+Y_hat_df = fcst.forecast(df=Y_train_df, h=4)
 
 # Reconcile the base predictions
 reconcilers = [
@@ -97,24 +102,20 @@ reconcilers = [
     MiddleOut(middle_level='Country/Purpose/State',
               top_down_method='forecast_proportions')
 ]
-
 hrec = HierarchicalReconciliation(reconcilers=reconcilers)
-
-reconciled_forecasts = hrec.reconcile(Y_hat_df=forecasts_df, S=S, tags=tags)
+Y_rec_df = hrec.reconcile(Y_hat_df=Y_hat_df, Y_df=Y_train_df,
+                          S=S, tags=tags)
 ```
 
 ### Evaluation
 Assumes you have a test dataframe.
 
 ```python
-from hierarchicalforecast.core import HierarchicalEvaluation
-
-def mse(y, y_hat):
-    return np.mean((y-y_hat)**2)
-
-evaluator = HierarchicalEvaluation(evaluators=[mse])
-evaluator.evaluate(Y_hat_df=Y_rec_df, Y_test=Y_test_df, 
-                   tags=tags, benchmark='Naive')
+df = Y_rec_df.merge(Y_test_df, on=['unique_id', 'ds'])
+evaluation = evaluate(df = df,
+                      tags = tags,
+                      metrics = [mse],
+                      benchmark = "Naive")
 ```
 
 ## 📖 Documentation (WIP)
@@ -134,20 +135,13 @@ We encourage users to explore this [literature review](https://otexts.com/fpp3/h
 ## 🙏 How to cite
 If you enjoy or benefit from using these Python implementations, a citation to this [hierarchical forecasting reference paper](https://arxiv.org/abs/2207.03517) will be greatly appreciated.
 ```bibtex
-@article{olivares2022hierarchicalforecast,
-    author    = {Kin G. Olivares and
-                 Federico Garza and 
-                 David Luo and 
-                 Cristian Challú and
-                 Max Mergenthaler and
-                 Souhaib Ben Taieb and
-                 Shanika L. Wickramasuriya and
-                 Artur Dubrawski},
-    title     = {{HierarchicalForecast}: A Reference Framework for Hierarchical Forecasting in Python},
-    journal   = {Work in progress paper, submitted to Journal of Machine Learning Research.},
-    volume    = {abs/2207.03517},
-    year      = {2022},
-    url       = {https://arxiv.org/abs/2207.03517},
-    archivePrefix = {arXiv}
+@article{olivares2024hierarchicalforecastreferenceframeworkhierarchical,
+      title={HierarchicalForecast: A Reference Framework for Hierarchical Forecasting in Python}, 
+      author={Kin G. Olivares and Azul Garza and David Luo and Cristian Challú and Max Mergenthaler and Souhaib Ben Taieb and Shanika L. Wickramasuriya and Artur Dubrawski},
+      year={2024},
+      eprint={2207.03517},
+      archivePrefix={arXiv},
+      primaryClass={stat.ML},
+      url={https://arxiv.org/abs/2207.03517}, 
 }
 ```
